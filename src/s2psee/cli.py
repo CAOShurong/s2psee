@@ -8,7 +8,7 @@ from typing import TextIO
 from s2psee import __version__
 from s2psee.demo import demo_network
 from s2psee.parse import ParseError, parse_touchstone
-from s2psee.plot import render_network
+from s2psee.plot import compare_networks, render_network
 
 
 def _force_utf8(stream: TextIO) -> None:
@@ -76,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="plot an ASCII Smith chart of the trace (default S11)",
     )
+    p.add_argument(
+        "--compare",
+        metavar="FILE",
+        help="second Touchstone file; plot magnitude-dB delta (this minus FILE)",
+    )
     p.add_argument("--width", type=int, default=64, help="plot width in characters")
     p.add_argument("--version", action="version", version=f"s2psee {__version__}")
     return p
@@ -102,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
     if len(modes) > 1:
         print("s2psee: choose at most one of --phase, --vswr, --smith", file=sys.stderr)
         return 2
+    if args.compare and modes:
+        print(
+            "s2psee: --compare is a magnitude-dB delta; drop --phase/--vswr/--smith",
+            file=sys.stderr,
+        )
+        return 2
     if not args.demo and not args.file:
         print("s2psee: pass a .s2p file, or --demo", file=sys.stderr)
         return 2
@@ -126,6 +137,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.smith and traces is None:
         traces = [(1, 1)]
+    if args.compare:
+        other_path = Path(args.compare)
+        if not other_path.is_file():
+            print(f"s2psee: {other_path} is not a file", file=sys.stderr)
+            return 2
+        try:
+            other = parse_touchstone(other_path, ports=args.ports)
+            text = compare_networks(net, other, traces=traces, width=args.width)
+        except (OSError, ParseError, ValueError) as exc:
+            print(f"s2psee: {exc}", file=sys.stderr)
+            return 1 if isinstance(exc, (OSError, ParseError)) else 2
+        emit(text)
+        return 0
     mode = "smith" if args.smith else "phase" if args.phase else "vswr" if args.vswr else "db"
     try:
         text = render_network(net, traces=traces, mode=mode, width=args.width)

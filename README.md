@@ -40,7 +40,13 @@ $ s2psee filter.s2p
 $ s2psee antenna.s1p --trace S11
 $ s2psee antenna.s1p --smith
 $ s2psee filter.s2p --phase --trace S21
+$ s2psee after.s2p --compare before.s2p
 ```
+
+`--compare` interpolates the second file onto this file's frequency grid and
+plots ΔdB (this minus the other). Use it after a matching tweak: max |ΔS11|
+says whether the smith chart actually moved. Different Z0 is noted; different
+port counts are rejected.
 
 No dependencies. Python 3.9+. The parser is Touchstone v1 (`RI` / `MA` / `DB`, Hz–THz). Two-port data uses the v1 column-major order `N11 N21 N12 N22`.
 
@@ -55,6 +61,7 @@ This is a **viewer**, not a VNA, not ADS, and not scikit-rf.
 - It plots **S-parameters only**. A file whose option line says `Y`, `Z`, `H` or `G` is rejected with that reason — convert or re-export as S.
 - Touchstone **v2** keywords other than `[Number of Ports]` are skipped; noise blocks stop the parse. If your file is a v2 `.ts` with mixed networks, use a full RF library.
 - The default picture is a **log-frequency terminal sketch** of magnitude, phase, or VSWR. `--smith` is an ASCII Γ-plane sketch of S11 (unit circle + r=1). It is not a calibrated Smith chart and it does not de-embed, gate, or calibrate.
+- `--compare` is a magnitude-dB difference after linear Re/Im interpolation. It is not a vector-calibrated delta, and it does not resample onto a new VNA sweep grid beyond this file's points.
 - The −3 dB marker is linear interpolation between two samples of |Sij|. It is not a fitted pole.
 
 ## License

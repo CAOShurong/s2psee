@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 from s2psee.parse import Network, mag_db, phase_deg, vswr
+
 
 def format_freq(hz: float) -> str:
     ah = abs(hz)
@@ -203,6 +204,84 @@ def render_smith(
     return "\n".join([head, *body, legend])
 
 
+def interp_complex(
+    src_f: list[float], src_z: list[complex], dst_f: list[float]
+) -> list[complex | None]:
+    """Linear interpolate Re/Im onto ``dst_f``. None outside the source span."""
+    if not src_f:
+        return [None] * len(dst_f)
+    out: list[complex | None] = []
+    j = 0
+    n = len(src_f)
+    for f in dst_f:
+        if f < src_f[0] or f > src_f[-1]:
+            out.append(None)
+            continue
+        while j + 1 < n and src_f[j + 1] < f:
+            j += 1
+        if j + 1 >= n or src_f[j] == f:
+            out.append(src_z[j])
+            continue
+        span = src_f[j + 1] - src_f[j]
+        t = 0.0 if span == 0 else (f - src_f[j]) / span
+        a, b = src_z[j], src_z[j + 1]
+        out.append(a + t * (b - a))
+    return out
+
+
+def compare_networks(
+    this: Network,
+    other: Network,
+    traces: Iterable[tuple[int, int]] | None = None,
+    width: int = 64,
+) -> str:
+    """Magnitude-dB delta: this minus other, interpolated onto this frequency grid."""
+    if this.ports != other.ports:
+        raise ValueError(
+            f"port count mismatch: {this.path} is {this.ports}-port, "
+            f"{other.path} is {other.ports}-port"
+        )
+    if traces is None:
+        traces = [(1, 1), (2, 1)] if this.ports >= 2 else [(1, 1)]
+    lo = max(this.freq_hz[0], other.freq_hz[0])
+    hi = min(this.freq_hz[-1], other.freq_hz[-1])
+    if lo >= hi:
+        raise ValueError("the two files have no overlapping frequency range")
+    freq = [f for f in this.freq_hz if lo <= f <= hi]
+    if len(freq) < 2:
+        raise ValueError("need at least two overlapping frequency points to compare")
+
+    znote = ""
+    if this.z0 != other.z0:
+        znote = f"   Z0 {this.z0:g} vs {other.z0:g} ohm (S still compared)"
+    lines = [
+        f"compare  {this.path}  minus  {other.path}{znote}",
+        f"overlap  {format_freq(freq[0])} - {format_freq(freq[-1])}  {len(freq)} pts",
+    ]
+    plots = []
+    for i, j in traces:
+        if i > this.ports or j > this.ports:
+            raise ValueError(f"S{i}{j} needs a {max(i, j)}-port file")
+        a = interp_complex(this.freq_hz, this.s_at(i, j), freq)
+        b = interp_complex(other.freq_hz, other.s_at(i, j), freq)
+        delta: list[float] = []
+        used_f: list[float] = []
+        for f, za, zb in zip(freq, a, b):
+            if za is None or zb is None:
+                continue
+            used_f.append(f)
+            delta.append(mag_db(za) - mag_db(zb))
+        if not delta:
+            raise ValueError(f"S{i}{j}: no overlapping samples")
+        peak = max(range(len(delta)), key=lambda k: abs(delta[k]))
+        lines.append(
+            f"S{i}{j}  max |Δ| {format_db(abs(delta[peak]))} @ {format_freq(used_f[peak])}"
+            f"   mean Δ {format_db(sum(delta) / len(delta))}"
+        )
+        plots.append(render_trace(used_f, delta, f"S{i}{j}  ΔdB", "this-other", width=width))
+    return "\n".join(lines) + "\n\n" + "\n\n".join(plots) + "\n"
+
+
 def render_network(
     net: Network,
     traces: Iterable[tuple[int, int]] | None = None,
@@ -234,13 +313,9 @@ def render_network(
             )
         elif mode == "vswr":
             finite = [v if math.isfinite(v) else 99.0 for v in info["vswr"]]
-            plots.append(
-                render_trace(net.freq_hz, finite, info["name"], "VSWR", width=width)
-            )
+            plots.append(render_trace(net.freq_hz, finite, info["name"], "VSWR", width=width))
         elif mode == "smith":
-            plots.append(
-                render_smith(net.freq_hz, net.s_at(i, j), info["name"], height=17)
-            )
+            plots.append(render_smith(net.freq_hz, net.s_at(i, j), info["name"], height=17))
         else:
             plots.append(
                 render_trace(net.freq_hz, info["dbs"], info["name"], "dB", width=width)

@@ -119,9 +119,7 @@ def parse_touchstone_text(
     for base in range(0, len(numbers), width):
         row = numbers[base : base + width]
         freq_hz.append(row[0] * scale)
-        pairs = [
-            _pair_to_complex(row[1 + 2 * k], row[2 + 2 * k], fmt) for k in range(cells)
-        ]
+        pairs = [_pair_to_complex(row[1 + 2 * k], row[2 + 2 * k], fmt) for k in range(cells)]
         s.append(_pairs_to_matrix(pairs, ports))
 
     if any(freq_hz[i] >= freq_hz[i + 1] for i in range(len(freq_hz) - 1)):

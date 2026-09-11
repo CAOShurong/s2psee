@@ -6,7 +6,7 @@ from pathlib import Path
 
 from s2psee.demo import demo_network, demo_touchstone, series_l_s21_3db_hz
 from s2psee.parse import ParseError, mag_db, parse_touchstone_text
-from s2psee.plot import crossing_hz, summarize
+from s2psee.plot import compare_networks, crossing_hz, interp_complex, summarize
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -30,7 +30,7 @@ class ParseTests(unittest.TestCase):
     def test_ma_and_db_round_trip(self) -> None:
         mag, ang = 0.5, 90.0
         ma = f"# GHZ S MA R 50\n1  {mag} {ang}\n"
-        db = f"# GHZ S DB R 50\n1  {20*math.log10(mag)} {ang}\n"
+        db = f"# GHZ S DB R 50\n1  {20 * math.log10(mag)} {ang}\n"
         a = parse_touchstone_text(ma, path="a.s1p")
         b = parse_touchstone_text(db, path="b.s1p")
         self.assertAlmostEqual(a.s[0][0][0].real, 0.0, places=9)
@@ -69,6 +69,26 @@ class ParseTests(unittest.TestCase):
 
     def test_mag_db_zero(self) -> None:
         self.assertLess(mag_db(0j), -100)
+
+    def test_interp_complex_hits_endpoints(self) -> None:
+        zs = interp_complex([1.0, 3.0], [1 + 0j, 3 + 2j], [1.0, 2.0, 3.0])
+        self.assertEqual(zs[0], 1 + 0j)
+        self.assertAlmostEqual(zs[1].real, 2.0)
+        self.assertAlmostEqual(zs[1].imag, 1.0)
+        self.assertEqual(zs[2], 3 + 2j)
+
+    def test_compare_identical_networks_is_flat(self) -> None:
+        net = demo_network()
+        text = compare_networks(net, net)
+        self.assertIn("max |Δ| 0.00 dB", text)
+        self.assertIn("ΔdB", text)
+
+    def test_compare_port_mismatch(self) -> None:
+        two = demo_network()
+        one = parse_touchstone_text("# HZ S RI R 50\n1e6 0.1 0.0\n2e6 0.2 0.0\n", path="a.s1p")
+        with self.assertRaises(ValueError) as ctx:
+            compare_networks(two, one)
+        self.assertIn("port count", str(ctx.exception))
 
     def test_fixture_file(self) -> None:
         from s2psee.parse import parse_touchstone

@@ -87,6 +87,30 @@ class CliTests(unittest.TestCase):
         self.assertIn("S21", text)
         self.assertNotIn("\u03a9", text)
 
+    def test_compare_demo_against_fixture(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = main(["--demo", "--compare", str(FIXTURES / "series_l.s2p")])
+        self.assertEqual(code, 0)
+        out = buf.getvalue()
+        self.assertIn("compare", out)
+        self.assertIn("max |Δ|", out)
+        self.assertIn("S21", out)
+
+    def test_compare_rejects_smith(self) -> None:
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = main(["--demo", "--compare", str(FIXTURES / "series_l.s2p"), "--smith"])
+        self.assertEqual(code, 2)
+        self.assertIn("compare", err.getvalue())
+
+    def test_compare_missing_other(self) -> None:
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = main(["--demo", "--compare", "no-such-other.s2p"])
+        self.assertEqual(code, 2)
+        self.assertIn("not a file", err.getvalue())
+
     def test_memory_roundtrip_via_tmp(self) -> None:
         path = FIXTURES / "series_l.s2p"
         self.assertIn("# HZ S RI R 50", path.read_text(encoding="utf-8"))

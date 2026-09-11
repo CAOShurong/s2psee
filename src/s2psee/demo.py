@@ -19,9 +19,7 @@ def series_l_s21_3db_hz() -> float:
 
 
 def demo_network() -> Network:
-    freqs = [
-        F_START * (F_STOP / F_START) ** (k / (N_POINTS - 1)) for k in range(N_POINTS)
-    ]
+    freqs = [F_START * (F_STOP / F_START) ** (k / (N_POINTS - 1)) for k in range(N_POINTS)]
     matrices = []
     for f in freqs:
         z = 1j * 2.0 * math.pi * f * L_H

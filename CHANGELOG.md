@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `--compare FILE` plots magnitude-dB delta versus a second Touchstone file
+  (this minus FILE), interpolated onto this frequency grid. Same-file compare
+  is a flat 0 dB; port-count mismatch is an error.
 - `--smith` draws an ASCII Smith chart of S11 (Γ-plane, unit circle and r=1).
   Coarse terminal sketch, not a calibrated chart.
 
