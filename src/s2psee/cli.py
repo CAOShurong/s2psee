@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="plot VSWR instead of magnitude in dB",
     )
+    p.add_argument(
+        "--smith",
+        action="store_true",
+        help="plot an ASCII Smith chart of the trace (default S11)",
+    )
     p.add_argument("--width", type=int, default=64, help="plot width in characters")
     p.add_argument("--version", action="version", version=f"s2psee {__version__}")
     return p
@@ -89,8 +94,13 @@ def main(argv: list[str] | None = None) -> int:
     _force_utf8(sys.stdout)
     _force_utf8(sys.stderr)
     args = build_parser().parse_args(argv)
-    if args.phase and args.vswr:
-        print("s2psee: choose at most one of --phase and --vswr", file=sys.stderr)
+    modes = [
+        name
+        for name, on in (("phase", args.phase), ("vswr", args.vswr), ("smith", args.smith))
+        if on
+    ]
+    if len(modes) > 1:
+        print("s2psee: choose at most one of --phase, --vswr, --smith", file=sys.stderr)
         return 2
     if not args.demo and not args.file:
         print("s2psee: pass a .s2p file, or --demo", file=sys.stderr)
@@ -114,7 +124,9 @@ def main(argv: list[str] | None = None) -> int:
     except argparse.ArgumentTypeError as exc:
         print(f"s2psee: {exc}", file=sys.stderr)
         return 2
-    mode = "phase" if args.phase else "vswr" if args.vswr else "db"
+    if args.smith and traces is None:
+        traces = [(1, 1)]
+    mode = "smith" if args.smith else "phase" if args.phase else "vswr" if args.vswr else "db"
     try:
         text = render_network(net, traces=traces, mode=mode, width=args.width)
     except ValueError as exc:

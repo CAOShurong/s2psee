@@ -49,6 +49,24 @@ class CliTests(unittest.TestCase):
             code = main([str(bad)])
         self.assertEqual(code, 1)
 
+    def test_smith_mode(self) -> None:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = main(["--demo", "--smith"])
+        self.assertEqual(code, 0)
+        out = buf.getvalue()
+        self.assertIn("Smith", out)
+        self.assertIn("S11", out)
+        self.assertIn("@", out)
+        self.assertNotIn("S21  (dB)", out)
+
+    def test_smith_rejects_phase(self) -> None:
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = main(["--demo", "--smith", "--phase"])
+        self.assertEqual(code, 2)
+        self.assertIn("smith", err.getvalue())
+
     def test_phase_mode(self) -> None:
         buf = io.StringIO()
         with redirect_stdout(buf):

@@ -42,3 +42,5 @@ jobs:
           s2psee --version
           s2psee --demo | tee demo.txt
           grep -q "S21" demo.txt
+          s2psee --demo --smith | tee smith.txt
+          grep -q "Smith" smith.txt

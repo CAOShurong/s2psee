@@ -141,6 +141,68 @@ def summarize(net: Network, i: int, j: int) -> dict:
     }
 
 
+def z_normalized(gamma: complex) -> complex | None:
+    """z/Z0 from Γ. None at the open-circuit pole."""
+    denom = 1.0 - gamma
+    if abs(denom) < 1e-12:
+        return None
+    return (1.0 + gamma) / denom
+
+
+def render_smith(
+    freq: list[float],
+    gamma: list[complex],
+    name: str,
+    height: int = 17,
+) -> str:
+    """ASCII Γ-plane sketch. Character cells are ~2:1, so width is 2*height-1."""
+    if height < 9:
+        height = 9
+    if height % 2 == 0:
+        height += 1
+    width = height * 2 - 1
+    canvas = [[" "] * width for _ in range(height)]
+    cx, cy = width // 2, height // 2
+    rx, ry = float(cx), float(cy)
+
+    def put(gx: float, gy: float, ch: str, *, overlay: bool = False) -> None:
+        x = cx + round(gx * rx)
+        y = cy - round(gy * ry)
+        if 0 <= y < height and 0 <= x < width and (overlay or canvas[y][x] == " "):
+            canvas[y][x] = ch
+
+    def circle(gcx: float, gcy: float, radius: float, ch: str) -> None:
+        for t in range(0, 360, 2):
+            ang = math.radians(t)
+            put(gcx + radius * math.cos(ang), gcy + radius * math.sin(ang), ch)
+
+    circle(0.0, 0.0, 1.0, ".")  # |Γ|=1
+    circle(0.5, 0.0, 0.5, ":")  # r=1 (Z0 match circle)
+
+    for g in gamma:
+        mag = abs(g)
+        if mag > 1.05:
+            g = g / mag
+        put(g.real, g.imag, "*", overlay=True)
+    last = gamma[-1]
+    put(last.real, last.imag, "@", overlay=True)
+
+    canvas[0][cx] = "j"
+    canvas[height - 1][cx] = "v"
+    canvas[cy][0] = "s"
+    canvas[cy][width - 1] = "o"
+
+    zlast = z_normalized(last)
+    ztxt = "z/Z0 inf" if zlast is None else f"z/Z0 {zlast.real:.2f}{zlast.imag:+.2f}j"
+    head = (
+        f"{name}  Smith  {format_freq(freq[0])} -> {format_freq(freq[-1])}  "
+        f"end |{name}| {format_db(mag_db(last))}  {phase_deg(last):.0f} deg  {ztxt}"
+    )
+    legend = "  .=|G|=1  :=r=1  *=sweep  @=stop  s=short  o=open  j=+j  v=-j"
+    body = ["".join(row) for row in canvas]
+    return "\n".join([head, *body, legend])
+
+
 def render_network(
     net: Network,
     traces: Iterable[tuple[int, int]] | None = None,
@@ -174,6 +236,10 @@ def render_network(
             finite = [v if math.isfinite(v) else 99.0 for v in info["vswr"]]
             plots.append(
                 render_trace(net.freq_hz, finite, info["name"], "VSWR", width=width)
+            )
+        elif mode == "smith":
+            plots.append(
+                render_smith(net.freq_hz, net.s_at(i, j), info["name"], height=17)
             )
         else:
             plots.append(

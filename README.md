@@ -38,6 +38,7 @@ Point it at a real file from a VNA or simulator:
 ```console
 $ s2psee filter.s2p
 $ s2psee antenna.s1p --trace S11
+$ s2psee antenna.s1p --smith
 $ s2psee filter.s2p --phase --trace S21
 ```
 
@@ -53,7 +54,7 @@ This is a **viewer**, not a VNA, not ADS, and not scikit-rf.
 
 - It plots **S-parameters only**. A file whose option line says `Y`, `Z`, `H` or `G` is rejected with that reason — convert or re-export as S.
 - Touchstone **v2** keywords other than `[Number of Ports]` are skipped; noise blocks stop the parse. If your file is a v2 `.ts` with mixed networks, use a full RF library.
-- The picture is a **log-frequency terminal sketch** of magnitude (default), phase, or VSWR. It is not a Smith chart and it does not de-embed, gate, or calibrate.
+- The default picture is a **log-frequency terminal sketch** of magnitude, phase, or VSWR. `--smith` is an ASCII Γ-plane sketch of S11 (unit circle + r=1). It is not a calibrated Smith chart and it does not de-embed, gate, or calibrate.
 - The −3 dB marker is linear interpolation between two samples of |Sij|. It is not a fitted pole.
 
 ## License
