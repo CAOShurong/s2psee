@@ -13,9 +13,9 @@ $ s2psee --demo
 ```
 
 ```
-demo: series 100 nH in 50 Ω   2-port  S  RI  Z0=50 Ω   61 pts   1 MHz – 1 GHz
+demo: series 100 nH in 50 ohm   2-port  S  RI  Z0=50 ohm   61 pts   1 MHz - 1 GHz
 S11  max -0.11 dB @ 1 GHz   min -44.04 dB @ 1 MHz
-S21  max -0.00 dB @ 1 MHz   min -16.07 dB @ 1 GHz   −3 dB @ 159 MHz
+S21  max -0.00 dB @ 1 MHz   min -16.07 dB @ 1 GHz   -3 dB @ 159 MHz
 
 S21  (dB)
   -0.0 ██████████████████████████████████│
@@ -31,7 +31,7 @@ S21  (dB)
        1 MHz                                              1 GHz  (log f)
 ```
 
-`--demo` is a series 100 nH inductor between 50 Ω ports. Theory puts |S21| = −3 dB at 159 MHz (`ωL = 2 Z0`); the interpolated crossing in that plot is 159 MHz.
+`--demo` is a series 100 nH inductor between 50 ohm ports. Theory puts |S21| = -3 dB at 159 MHz (`wL = 2 Z0`); the interpolated crossing in that plot is 159 MHz.
 
 Point it at a real file from a VNA or simulator:
 

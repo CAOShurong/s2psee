@@ -56,6 +56,19 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("deg", buf.getvalue())
 
+    def test_demo_survives_cp1252_stdout(self) -> None:
+        raw = io.BytesIO()
+        stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict", newline="\n")
+        with redirect_stdout(stream):
+            code = main(["--demo"])
+        stream.flush()
+        self.assertEqual(code, 0)
+        text = raw.getvalue().decode("utf-8", errors="replace")
+        if "S21" not in text:
+            text = raw.getvalue().decode("cp1252", errors="replace")
+        self.assertIn("S21", text)
+        self.assertNotIn("\u03a9", text)
+
     def test_memory_roundtrip_via_tmp(self) -> None:
         path = FIXTURES / "series_l.s2p"
         self.assertIn("# HZ S RI R 50", path.read_text(encoding="utf-8"))

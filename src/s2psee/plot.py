@@ -150,8 +150,8 @@ def render_network(
     if traces is None:
         traces = [(1, 1), (2, 1)] if net.ports >= 2 else [(1, 1)]
     lines = [
-        f"{net.path}   {net.ports}-port  S  {net.fmt}  Z0={net.z0:g} Ω   "
-        f"{len(net.freq_hz)} pts   {format_freq(net.freq_hz[0])} – {format_freq(net.freq_hz[-1])}"
+        f"{net.path}   {net.ports}-port  S  {net.fmt}  Z0={net.z0:g} ohm   "
+        f"{len(net.freq_hz)} pts   {format_freq(net.freq_hz[0])} - {format_freq(net.freq_hz[-1])}"
     ]
     plots = []
     for i, j in traces:
@@ -160,7 +160,7 @@ def render_network(
         info = summarize(net, i, j)
         extra = ""
         if info["minus3_hz"] is not None and (i, j) != (1, 1):
-            extra = f"   −3 dB @ {format_freq(info['minus3_hz'])}"
+            extra = f"   -3 dB @ {format_freq(info['minus3_hz'])}"
         lines.append(
             f"{info['name']}  max {format_db(info['max_db'])} @ {format_freq(info['max_hz'])}"
             f"   min {format_db(info['min_db'])} @ {format_freq(info['min_hz'])}"

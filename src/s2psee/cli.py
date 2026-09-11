@@ -3,11 +3,38 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import TextIO
 
 from s2psee import __version__
 from s2psee.demo import demo_network
 from s2psee.parse import ParseError, parse_touchstone
 from s2psee.plot import render_network
+
+
+def _force_utf8(stream: TextIO) -> None:
+    """Windows cp1252 consoles raise on Ω/█; UTF-8 with replace does not."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if not callable(reconfigure):
+        return
+    try:
+        reconfigure(encoding="utf-8", errors="replace")
+    except (OSError, ValueError, AttributeError):
+        return
+
+
+def emit(text: str, stream: TextIO | None = None) -> None:
+    stream = sys.stdout if stream is None else stream
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    buf = getattr(stream, "buffer", None)
+    payload = text.encode(encoding, errors="replace")
+    if buf is not None:
+        try:
+            buf.write(payload)
+            buf.flush()
+            return
+        except (OSError, ValueError, AttributeError):
+            pass
+    stream.write(payload.decode(encoding, errors="replace"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -59,6 +86,8 @@ def _parse_trace(token: str) -> tuple[int, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8(sys.stdout)
+    _force_utf8(sys.stderr)
     args = build_parser().parse_args(argv)
     if args.phase and args.vswr:
         print("s2psee: choose at most one of --phase and --vswr", file=sys.stderr)
@@ -80,13 +109,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"s2psee: {exc}", file=sys.stderr)
         return 1
 
-    traces = [_parse_trace(t) for t in args.trace] or None
+    try:
+        traces = [_parse_trace(t) for t in args.trace] or None
+    except argparse.ArgumentTypeError as exc:
+        print(f"s2psee: {exc}", file=sys.stderr)
+        return 2
     mode = "phase" if args.phase else "vswr" if args.vswr else "db"
     try:
-        sys.stdout.write(render_network(net, traces=traces, mode=mode, width=args.width))
+        text = render_network(net, traces=traces, mode=mode, width=args.width)
     except ValueError as exc:
         print(f"s2psee: {exc}", file=sys.stderr)
         return 2
+    emit(text)
     return 0
 
 

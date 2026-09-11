@@ -29,7 +29,7 @@ def demo_network() -> Network:
         s21 = (2.0 * Z0) / (z + 2.0 * Z0)
         matrices.append([[s11, s21], [s21, s11]])
     return Network(
-        path="demo: series 100 nH in 50 Ω",
+        path="demo: series 100 nH in 50 ohm",
         ports=2,
         param="S",
         fmt="RI",
